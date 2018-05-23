@@ -18,6 +18,9 @@ refreshRate = 0.005   # seconds, communication & FSM
 displayDiv = 5       # We refresh the display every 50th packet
 flexSEAScheduler = sched.scheduler(perf_counter, sleep)
 
+# Parameters
+
+
 # position controller gains:
 pos_KP = 50 # proportional gain
 pos_KI = 3 # integral gain
@@ -111,5 +114,5 @@ try:
 except (KeyboardInterrupt, SystemExit):
 	beforeExiting()
 	sys.exit()
-	
+
 

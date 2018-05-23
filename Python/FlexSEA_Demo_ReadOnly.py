@@ -13,7 +13,7 @@ import sys
 import sched
 
 # User setup:
-COM = comPortFromFile()
+COM = comPortFromFile().rstrip()
 refreshRate = 0.004   # seconds, communication & FSM
 displayDiv = 15       # we refresh the display every 50th packet
 flexSEAScheduler = sched.scheduler(perf_counter, sleep) # global scheduler
@@ -71,4 +71,3 @@ try:
 except (KeyboardInterrupt, SystemExit):
 	beforeExiting()
 	sys.exit()
-	

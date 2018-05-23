@@ -11,7 +11,6 @@ import os
 import sys
 import platform
 
-
 #adding currenty directory path
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
