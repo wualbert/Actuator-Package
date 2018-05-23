@@ -12,8 +12,11 @@ import os
 import sys
 import sched
 
+#global instance of PyFlexSEA
+myPyFlexSEA = PyFlexSEA()
+
 # User setup:
-COM = comPortFromFile().rstrip()
+COM = myPyFlexSEA.comPortFromFile().rstrip()
 refreshRate = 0.004   # seconds, communication & FSM
 displayDiv = 15       # we refresh the display every 50th packet
 flexSEAScheduler = sched.scheduler(perf_counter, sleep) # global scheduler
@@ -28,7 +31,7 @@ def timerEventReadActPack():
 	global f
 	lastTimeStamp = timeStamp
 	timeStamp = perf_counter()
-	i = readActPack(0, 2, displayDiv)
+	i = myPyFlexSEA.readActPack(0, 2, displayDiv)
 	f = f*0.99 + 0.01/(timeStamp-lastTimeStamp) # leaky integral refresh rate
 	if i == 0:
 		print('\nRefresh rate =', f)
@@ -38,7 +41,7 @@ def timerEventReadActPack():
 # housekeeping before we quit:
 def beforeExiting():
 	print("closing com")
-	setControlMode(0)
+	myPyFlexSEA.setControlMode(0)
 	sleep(0.5)
 	hser.close()
 	sleep(0.5)
@@ -54,8 +57,8 @@ print('Opened', hser.portstr)
 
 # pyFlexSEA:
 print('Initializing FlexSEA stack...')
-initPyFlexSEA()
-setPyFlexSEASerialPort(hser) # Pass com handle to pyFlexSEA
+myPyFlexSEA.initPyFlexSEA()
+myPyFlexSEA.setPyFlexSEASerialPort(hser) # Pass com handle to pyFlexSEA
 sleep(0.1)
 
 # Background: read Rigid at 100Hz:
