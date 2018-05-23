@@ -16,7 +16,8 @@ import sched
 myPyFlexSEA = PyFlexSEA()
 
 # User setup:
-COM = myPyFlexSEA.comPortFromFile().rstrip()
+# COM = comPortFromFile().rstrip()
+COM = 'COM5'
 refreshRate = 0.004   # seconds, communication & FSM
 displayDiv = 15       # we refresh the display every 50th packet
 flexSEAScheduler = sched.scheduler(perf_counter, sleep) # global scheduler

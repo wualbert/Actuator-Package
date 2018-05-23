@@ -1,39 +1,77 @@
 # FlexSEA_Dyno_Testing.py
 #=-=-=-=-=-=-=-=-=-=-=-=
 # Performs Dyno Testing
+# 2018 Albert Wu
 
 
 import serial
 from time import perf_counter, sleep
+import time
 from pyFlexSEA import *
+from dyno_parameters import *
 import os
 import sys
 import sched # python task scheduler library
 
-class DynoFlexSEA:
-	def __init__(self):
-
-	def
-
-class LoadFlexSEA(DynoFlexSEA):
-
-class
-
 # User setup:
-COM = comPortFromFile().rstrip()
-refreshRate = 0.005   # seconds, communication & FSM
-displayDiv = 50       # We refresh the display every 50th packet
+#Get COM Ports
+loadCOM, testCOM, forceCOM = comPortFromFile().split(",")
+
 flexSEAScheduler = sched.scheduler(perf_counter, sleep) # global scheduler
 
 # This is called by the timer:
+# lastTimeStamp = 0
+# timeStamp = perf_counter()
+# f = 1/refreshRate
+# def timerEvent():
+# 	global f
+# 	global i
+# 	# Read data & display it:
+# 	#print(time.time())
+# 	#i = readActPack(0, 2, displayDiv)
+# 	#if i == 0:
+# 	#	print('\nFSM State =', state)
+# 	# Call state machine:
+# 	#print(testFlexSEA.myRigid.mn.accel==loadFlexSEA.myRigid.mn.accel)
+# 	print('test')
+# 	testFlexSEA.readActPack(0, 2, displayDiv)
+# 	sleep(0.1)
+# 	print('load')
+# 	loadFlexSEA.readActPack(0, 2, displayDiv)
+# 	sleep(0.1)
+# 	# if (testFlexSEA.myRigid.mn.accel.x==loadFlexSEA.myRigid.mn.accel.x and
+# 	# 	  testFlexSEA.myRigid.mn.accel.y == loadFlexSEA.myRigid.mn.accel.y and
+# 	# 	  testFlexSEA.myRigid.mn.accel.z == loadFlexSEA.myRigid.mn.accel.z):
+# 	# 	print(testFlexSEA.myRigid.mn.gyro.x,'test')
+# 	# 	print(loadFlexSEA.myRigid.mn.gyro.x,'load')
+# 	# 	print('---')
+#     #
+# 	# f = f*0.99 + 0.01/(timeStamp-lastTimeStamp+0.00000001) # leaky integral refresh rate
+# 	# if i == 0:
+# 	# 	print('\nRefresh rate =', f)
+# 	# 	print("--> press 'control+c' to quit")
+#
+# 	flexSEAScheduler.enter(refreshRate, 1, timerEvent) # adds itself back onto schedule, with priority 1
+
+# this is called by the timer:
+lastTimeStamp = 0
+timeStamp = perf_counter()
+f = 1 / REFRESH_RATE
 def timerEvent():
-	# Read data & display it:
-	i = readActPack(0, 2, displayDiv)
+	global lastTimeStamp
+	global timeStamp
+	global f
+	lastTimeStamp = timeStamp
+	timeStamp = perf_counter()
+	i = testFlexSEA.readActPack(0, 2, DISP_DIV)
+	loadFlexSEA.readActPack(0, 2, DISP_DIV, False)
+	f = f*0.99 + 0.01/(timeStamp-lastTimeStamp) # leaky integral refresh rate
 	if i == 0:
-		print('\nFSM State =', state)
-	# Call state machine:
-	dynoTest()
-	flexSEAScheduler.enter(refreshRate, 1, dynoTest) # adds itself back onto schedule, with priority 1
+		print('\nRefresh rate =', f)
+		print("--> press 'control+c' to quit")
+
+	flexSEAScheduler.enter(REFRESH_RATE, 1, timerEvent) # adds itself back onto schedule, with priority 1
+
 
 #########################################################################################
 #################### USER DEFINED PERSISTENT VARIABLES GO HERE ##########################
@@ -49,71 +87,62 @@ min_accel_x = 0
 was_motor_angel_equal_to_tau = False
 tau = 6283185 #6.283185
 
-############################ USER DEFINED CODE GOES HERE ################################
+############################ DYNO TESTING CODE ################################
 def dynoTest(): # function called once every cycle
-	# change and modify the code in here as you please
-	global loop_counter
-	global top_speed
-	global max_accel_x
-	global min_accel_x
-	global was_motor_angel_equal_to_tau
-
-	i = readActPack(0, 2, displayDiv)
-
-	setControlMode(CTRL_OPEN)
-	setMotorVoltage(0)
-	
-	if myRigid.ex.enc_ang[0] == tau:
-		was_motor_angel_equal_to_tau = True
-
-	if myRigid.mn.accel.x > max_accel_x:
-		max_accel_x = myRigid.mn.accel.x
-
-	if myRigid.mn.accel.x < min_accel_x:
-		min_accel_x = myRigid.mn.accel.x
-
-	if myRigid.ex.enc_ang_vel[0] > top_speed:
-		top_speed = myRigid.ex.enc_ang_vel[0]
-
-	for i in range(1000):
-		wastingTime = i + 5 # do some random calculations
-		wastingTime2 = i**2 - 6
-
-	loop_counter += 1
-
+	try:
+		pass
+	except:
+		pass
 	# end main function
-	flexSEAScheduler.enter(refreshRate, 1, dynoTest) # add itself back onto scheduler
 
-def EXITING(): # function called once when exiting script
-	print("top_speed :", top_speed)
-	print("max_accel_x :", max_accel_x)
-	print("min_accel_x", min_accel_x)
-	print("did motor angle equal tau? ", was_motor_angel_equal_to_tau)
-
-########################### DON'T CHANGE CODE BELOW THIS LINE ###########################
-#########################################################################################
+########################### END OF DYNO TESTING CODE ###########################
+################################################################################
 
 # Housekeeping before we quit:
 def beforeExiting():
-	EXITING()
 	print('closing com')
-	setControlMode(0)
-	sleep(0.5)
-	hser.close()
-	sleep(0.5)
+	try:
+		loadFlexSEA.setControlMode(0)
+		testFlexSEA.setControlMode(0)
+		sleep(0.5)
+		loadhser.close()
+		testhser.close()
+		sleep(0.5)
+	except Exception as e:
+		print(e)
 	print('\n\nDone.\n')
 
-print('\nDemo code - Python project with FlexSEA-Stack DLL')
+
+print('\nDyno Testing')
 print('====================================================\n')
-
-# Open serial port:
-hser = serial.Serial(COM)
-print('Opened', hser.portstr)
-
-print('Initializing FlexSEA stack...')
-initPyFlexSEA()
-setPyFlexSEASerialPort(hser) #Pass com handle to pyFlexSEA
+try:
+	# Set up serial for load FlexSEA
+	loadhser = serial.Serial(loadCOM)
+	print('Opened', loadhser.portstr, 'for load FlexSEA')
+	print('Initializing Load FlexSEA stack...')
+	#Initialize load FlexSEA
+	loadFlexSEA = PyFlexSEA()
+	loadFlexSEA.initPyFlexSEA()
+	loadFlexSEA.setPyFlexSEASerialPort(loadhser) #Pass com handle to pyFlexSEA
+except serial.SerialException:
+	print('Load FlexSEA Initialization Failed!')
 sleep(0.1)
+
+try:
+	# Set up serial for test FlexSEA
+	testhser = serial.Serial(testCOM)
+	print('Opened', testhser.portstr, 'for test FlexSEA')
+	print('Initializing Test FlexSEA stack...')
+	#Initialize load FlexSEA
+	testFlexSEA = PyFlexSEA()
+	testFlexSEA.initPyFlexSEA()
+	testFlexSEA.setPyFlexSEASerialPort(testhser) #Pass com handle to pyFlexSEA
+except serial.SerialException:
+	print('Test FlexSEA Initialization Failed!')
+
+
+	#TODO: Set up serial for torque sensor
+
 
 # Background: read Rigid and call FSM at 100Hz:
 print('Starting the background comm...')
@@ -123,7 +152,7 @@ sleep(0.1)
 #===================
 try:
 	while True:
-		flexSEAScheduler.enter(refreshRate, 1, dynoTest)
+		flexSEAScheduler.enter(REFRESH_RATE, 1, timerEvent)
 		flexSEAScheduler.run()
 		sleep(60*60*24) # arbitrary sleep time
 except (KeyboardInterrupt, SystemExit):

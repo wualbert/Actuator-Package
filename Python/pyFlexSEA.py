@@ -1,4 +1,9 @@
-#Python wrapper for the FlexSEA import ctypes
+# Python wrapper for the FlexSEA import ctypes
+#=-=-=-=-=-=-=-=-=-=-=-=
+# Object-Oriented Version
+# Modified from the original pyFlexSEA.py from Dephy
+# 2018 Albert Wu
+
 from ctypes import *
 from ctypes import cdll
 from ctypes import _SimpleCData
@@ -13,6 +18,7 @@ class PyFlexSEA:
 	def __init__(self):
 		# adding currenty directory path
 		self.dir_path = os.path.dirname(os.path.realpath(__file__))
+		self.flexsea = None
 
 		# Variables used to send packets:
 		self.nb = c_ushort(0)
@@ -54,8 +60,6 @@ class PyFlexSEA:
 	def initPyFlexSEA(self):
 		# Init code:
 		print('[pySerial Module]\n')
-		global flexsea
-
 		loadSucceeded = False
 		is_64bits = sys.maxsize > 2 ** 32
 		sysOS = platform.system().lower()
@@ -76,7 +80,7 @@ class PyFlexSEA:
 
 		for lib in libraries:
 			try:
-				flexsea = cdll.LoadLibrary(lib)
+				self.flexsea = cdll.LoadLibrary(lib)
 				loadSucceeded = True
 				break
 			except:
@@ -86,7 +90,7 @@ class PyFlexSEA:
 			print("Failed to load shared library. Check library path\n")
 		else:
 			# Init stack:-
-			flexsea.initFlexSEAStack_minimalist(FLEXSEA_PLAN_1);
+			self.flexsea.initFlexSEAStack_minimalist(FLEXSEA_PLAN_1);
 			# Initialize control variables:
 			self.initControlVariables()
 
@@ -106,13 +110,6 @@ class PyFlexSEA:
 	def setPyFlexSEASerialPort(self,s):
 		self.hser = s
 
-	#Read serial port from com.txt file
-	def comPortFromFile(self):
-		file = open("com.txt", "r")
-		s = file.read()
-		#print(s)
-		return s
-
 	#Did we receive new serial bytes?
 	def serialBytesReady(self,timeout, b):
 		i = 0
@@ -128,23 +125,14 @@ class PyFlexSEA:
 		if self.ri_offs > max:
 			self.ri_offs = min
 		return self.ri_offs
+	#ActPack user functions:
+	#=======================
 
-	#Clears the terminal - use before printing new values
-	def clearTerminal(self):
-		if sys.platform.lower().startswith('win'):
-			os.system('cls') #Clear terminal (Win)
-		elif sys.platform.lower().startswith('linux'):
-			os.system('clear') #Clear terminal (Unix)
-
-#ActPack user functions:
-#=======================
-
-#ActPack is used to read sensor values, and write controller options & setpoint
-#minOffs & maxOffs control what offsets are read (0: IMU, joint enc., etc., 
-# 1: motor ang/vel/acc, board state, etc., 2: genVar (used for 6-ch Strain), ...)
-#printDiv: values will be displayed on the terminal every printDiv samples
+	#ActPack is used to read sensor values, and write controller options & setpoint
+	#minOffs & maxOffs control what offsets are read (0: IMU, joint enc., etc.,
+	# 1: motor ang/vel/acc, board state, etc., 2: genVar (used for 6-ch Strain), ...)
+	#printDiv: values will be displayed on the terminal every printDiv samples
 	def readActPack(self,minOffs, maxOffs, printDiv, displayFlexSEA=True):
-
 		self.requestReadActPack(self.offs(minOffs, maxOffs))
 		bytes = self.serialBytesReady(100, COMM_STR_LEN)
 
@@ -156,20 +144,20 @@ class PyFlexSEA:
 		#print(']')
 
 		ppFlag = c_uint8(0)
-		ppFlag = flexsea.receiveFlexSEABytes(byref(self.cBytes), bytes, 1);
+		ppFlag = self.flexsea.receiveFlexSEABytes(byref(self.cBytes), bytes, 1)
 		if(ppFlag):
 			#print('We parsed a packet: ', end='')
 			cmd = c_uint8(0)
 			type = c_uint8(0)
-			flexsea.getSignatureOfLastPayloadParsed(byref(cmd), byref(type));
+			self.flexsea.getSignatureOfLastPayloadParsed(byref(cmd), byref(type))
 			#print('cmd:', cmd, 'type:', type)
 
 			newActPackPacket = c_uint8(0)
-			newActPackPacket = flexsea.newActPackRRpacketAvailable();
+			newActPackPacket = self.flexsea.newActPackRRpacketAvailable()
 
 			if(newActPackPacket):
 				#print('New Rigid packet(s) available\n')
-				flexsea.getLastRigidData(byref(self.myRigid));
+				self.flexsea.getLastRigidData(byref(self.myRigid))
 
 				if displayFlexSEA:
 					i = self.printActPack(printDiv)
@@ -181,12 +169,12 @@ class PyFlexSEA:
 
 #Send Read Request ActPack:
 	def requestReadActPack(self,offset):
-		flexsea.ptx_cmd_actpack_rw(FLEXSEA_MANAGE_1, byref(self.nb), self.commStr, offset, self.pCtrl[0], self.pSetpoint[0], self.pSetGains[0], self.pG0[0], self.pG1[0], self.pG2[0], self.pG3[0], self.pSystem);
+		self.flexsea.ptx_cmd_actpack_rw(FLEXSEA_MANAGE_1, byref(self.nb), self.commStr, offset, self.pCtrl[0], self.pSetpoint[0], self.pSetGains[0], self.pG0[0], self.pG1[0], self.pG2[0], self.pG3[0], self.pSystem);
 		self.hser.write(self.commStr)
 		if(offset == 0 and self.pSetGains[0] == CHANGE):
 			self.pSetGains[0] = c_uint8(KEEP)
 
-#Use this function to enable or disable FSM2. Controller will be reset.
+	#Use this function to enable or disable FSM2. Controller will be reset.
 	def actPackFSM2(self,on):
 		self.pCtrl[0] = c_uint8(CTRL_NONE)	#Disable controller
 		if on:
@@ -194,12 +182,12 @@ class PyFlexSEA:
 		else:
 			self.pSystem = c_uint8(SYS_DISABLE_FSM2)
 
-		flexsea.ptx_cmd_actpack_rw(FLEXSEA_MANAGE_1, byref(self.nb), self.commStr, c_uint8(0), self.pCtrl[0], self.pSetpoint[0], self.pG0[0], self.pG1[0], self.pG2[0], self.pG3[0], self.pSetGains[0], self.pSystem);
+		self.flexsea.ptx_cmd_actpack_rw(FLEXSEA_MANAGE_1, byref(self.nb), self.commStr, c_uint8(0), self.pCtrl[0], self.pSetpoint[0], self.pG0[0], self.pG1[0], self.pG2[0], self.pG3[0], self.pSetGains[0], self.pSystem);
 		self.hser.write(self.commStr)
 
-#Sends a request to Execute. Make sure to disable FSM2 first.
+	#Sends a request to Execute. Make sure to disable FSM2 first.
 	def findPoles(self,block):
-		flexsea.ptx_cmd_calibration_mode_rw(FLEXSEA_EXECUTE_1, byref(self.nb), self.commStr, c_uint8(CALIBRATION_FIND_POLES))
+		self.flexsea.ptx_cmd_calibration_mode_rw(FLEXSEA_EXECUTE_1, byref(self.nb), self.commStr, c_uint8(CALIBRATION_FIND_POLES))
 		self.hser.write(self.commStr)
 		if not block:
 			return
@@ -209,81 +197,82 @@ class PyFlexSEA:
 				sleep(1)
 			print('Ready!')
 
-#Pocket functions:
-#================
+	#Pocket functions:
+	#================
 
-#Pocket is used to read sensor values, and write controller options & setpoint (FlexSEA-Pocket only)
-#minOffs & maxOffs control what offsets are read 
-# 0: IMU, voltages and other Mn + Re variables 
-# 1: Right motor
-# 2: Left motor
-# 3: genVars
-#printDiv: values will be displayed on the terminal every printDiv samples
-	def readPocket(self,minOffs, maxOffs, printDiv, displayFlexSEA=True):
+	#Pocket is used to read sensor values, and write controller options & setpoint (FlexSEA-Pocket only)
+	#minOffs & maxOffs control what offsets are read
+	# 0: IMU, voltages and other Mn + Re variables
+	# 1: Right motor
+	# 2: Left motor
+	# 3: genVars
+	#printDiv: values will be displayed on the terminal every printDiv samples
 
-		self.requestReadPocket(self.offs(minOffs, maxOffs))
-		bytes = self.serialBytesReady(100, COMM_STR_LEN)
+	# def readPocket(self,minOffs, maxOffs, printDiv, displayFlexSEA=True):
+    #
+	# 	self.requestReadPocket(self.offs(minOffs, maxOffs))
+	# 	bytes = self.serialBytesReady(100, COMM_STR_LEN)
+    #
+	# 	#s = self.hser.read(bytes)
+	# 	s = self.hser.read(COMM_STR_LEN) #Reading a fixed length for now
+	# 	for i in range(0,bytes-1):
+	# 		#print(s[i], end=' ')
+	# 		self.cBytes[i] = s[i]
+	# 	#print(']')
+    #
+	# 	ppFlag = c_uint8(0)
+	# 	#print("Bytes:", bytes)
+	# 	ppFlag = self.flexsea.receiveFlexSEABytes(byref(self.cBytes), bytes, 1);
+	# 	if(ppFlag):
+	# 		#print('We parsed a packet: ', end='')
+	# 		cmd = c_uint8(0)
+	# 		type = c_uint8(0)
+	# 		self.flexsea.getSignatureOfLastPayloadParsed(byref(cmd), byref(type));
+	# 		#print('cmd:', cmd, 'type:', type)
+    #
+	# 		newPocketPacket = c_uint8(0)
+	# 		newPocketPacket = self.flexsea.newPocketRRpacketAvailable();
+    #
+	# 		if(newPocketPacket):
+	# 			#print('New Rigid packet(s) available\n')
+	# 			self.flexsea.getLastPocketData(byref(self.self.myPocket));
+    #
+	# 			if displayFlexSEA:
+	# 				i = self.printPocket(printDiv)
+	# 				return i
+	# 		#else:
+	# 			#print('This is not a Rigid packet')
+	# 	#else:
+	# 		#print('Invalid packet')
 
-		#s = self.hser.read(bytes)
-		s = self.hser.read(COMM_STR_LEN) #Reading a fixed length for now
-		for i in range(0,bytes-1):
-			#print(s[i], end=' ')
-			self.cBytes[i] = s[i]
-		#print(']')
-
-		ppFlag = c_uint8(0)
-		#print("Bytes:", bytes)
-		ppFlag = flexsea.receiveFlexSEABytes(byref(self.cBytes), bytes, 1);
-		if(ppFlag):
-			#print('We parsed a packet: ', end='')
-			cmd = c_uint8(0)
-			type = c_uint8(0)
-			flexsea.getSignatureOfLastPayloadParsed(byref(cmd), byref(type));
-			#print('cmd:', cmd, 'type:', type)
-
-			newPocketPacket = c_uint8(0)
-			newPocketPacket = flexsea.newPocketRRpacketAvailable();
-
-			if(newPocketPacket):
-				#print('New Rigid packet(s) available\n')
-				flexsea.getLastPocketData(byref(self.self.myPocket));
-
-				if displayFlexSEA:
-					i = self.printPocket(printDiv)
-					return i
-			#else:
-				#print('This is not a Rigid packet')
-		#else:
-			#print('Invalid packet')
-
-#Send Read Request ActPack:
+	#Send Read Request ActPack:
 	def requestReadPocket(self,offset):
-		flexsea.ptx_cmd_pocket_rw(FLEXSEA_MANAGE_1, byref(self.nb), self.commStr, offset, self.pCtrl[0], self.pSetpoint[0], self.pSetGains[0], self.pG0[0], self.pG1[0], self.pG2[0], self.pG3[0], self.pCtrl[1], self.pSetpoint[1], self.pSetGains[1], self.pG0[1], self.pG1[1], self.pG2[1], self.pG3[1], self.pSystem);
+		self.flexsea.ptx_cmd_pocket_rw(FLEXSEA_MANAGE_1, byref(self.nb), self.commStr, offset, self.pCtrl[0], self.pSetpoint[0], self.pSetGains[0], self.pG0[0], self.pG1[0], self.pG2[0], self.pG3[0], self.pCtrl[1], self.pSetpoint[1], self.pSetGains[1], self.pG0[1], self.pG1[1], self.pG2[1], self.pG3[1], self.pSystem);
 		self.hser.write(self.commStr)
 		if(self.pSetGains[0] == CHANGE):
 			self.pSetGains[0] = c_uint8(KEEP)
 		if(self.pSetGains[1] == CHANGE):
 			self.pSetGains[1] = c_uint8(KEEP)
 
-#Set Control Mode:
+	#Set Control Mode:
 	def setControlMode(self,ctrlMode, ch=0):
 		self.pCtrl[ch] = c_uint8(ctrlMode)
 
-#Set Motor Voltage:
+	#Set Motor Voltage:
 	def setMotorVoltage(self, mV, ch=0):
 		self.pSetpoint[ch] = c_int32(mV)
 
-#Set Motor Current:
+	#Set Motor Current:
 	def setMotorCurrent(self, cur, ch=0):
 		self.pSetpoint[ch] = c_int32(cur)
 
-#Set Position Setpoint (Position & Impedance controllers):
+	#Set Position Setpoint (Position & Impedance controllers):
 	def setPosition(self, p, ch=0):
 		self.pSetpoint[ch] = c_int32(p)
 
-#Set Impedance controller gains.
-#z_k & z_b: Impedance K & B
-#i_kp & i_ki: Current Proportional & Integral
+	#Set Impedance controller gains.
+	#z_k & z_b: Impedance K & B
+	#i_kp & i_ki: Current Proportional & Integral
 	def setZGains(self,z_k, z_b, i_kp, i_ki, ch=0):
 		self.pG0[ch] = c_int16(z_k)
 		self.pG1[ch] = c_int16(z_b)
@@ -291,10 +280,10 @@ class PyFlexSEA:
 		self.pG3[ch] = c_int16(i_ki)
 		self.pSetGains[ch] = c_uint8(CHANGE)
 
-#Display functions:
-#==================
+	#Display functions:
+	#==================
 
-#Print Rigid data:
+	#Print Rigid data:
 	def printRigid(self):
 		print('Rigid')
 		print('Gyro X:          ', self.myRigid.mn.gyro.x)
@@ -315,7 +304,7 @@ class PyFlexSEA:
 		print('6-ch strain #0:  ', self.myRigid.mn.genVar[0])
 		print('...              ')
 
-# #Print Pocket data:
+	# #Print Pocket data:
 	def printPocket_s(self):
 		print('Pocket')
 		print('Gyro X:          ', self.myPocket.mn.gyro.x)
@@ -350,39 +339,52 @@ class PyFlexSEA:
 		print('genVar[3]:       ', self.myPocket.mn.genVar[3])
 		print('...              ')
 
-#Print ActPack data (Rigid + controller info):
+	#Print ActPack data (Rigid + controller info):
 	def printActPack(self,div):
 		if(self.printDiv(div) == 0):
-			self.clearTerminal()
+			clearTerminal()
 			self.printController(self.pCtrl[0], self.pSetpoint[0], self.pG0[0], self.pG1[0], self.pG2[0], self.pG3[0], self.pSetGains[0])
 			self.printRigid()
 			return 0
 		return 1
 
-#Print Pocket data (pocket_s + controller info):
+	#Print Pocket data (pocket_s + controller info):
 	def printPocket(self,div):
 		if(self.printDiv(div) == 0):
-			self.clearTerminal()
+			#self.clearTerminal()
 			self.printController(self.pCtrl[0], self.pSetpoint[0], self.pG0[0], self.pG1[0], self.pG2[0], self.pG3[0], self.pSetGains[0])
 			self.printController(self.pCtrl[1], self.pSetpoint[1], self.pG0[1], self.pG1[1], self.pG2[1], self.pG3[1], self.pSetGains[1])
 			self.printPocket_s()
 			return 0
 		return 1
 
-#Prints easy to read info about the controller
+	#Prints easy to read info about the controller
 	def printController(self,ctrl, sp, g0, g1, g2, g3, sg):
 		c = self.mapCtrlText[ctrl]
 		s = sp
 		print('\nController:', c, '|', 'Setpoint:', s)
 		print('Gains: [', g0, ', ', g1, ', ', g2, ', ', g3, '] (', sg, ')\n')
 
-#Timing dividers:
+	#Timing dividers:
 	def printDiv(self,div):
 		self.printDivider += 1
 		if self.printDivider > div:
 			self.printDivider = 0
 		return self.printDivider
 
+#Read serial port from com.txt file
+def comPortFromFile():
+	file = open("com.txt", "r")
+	s = file.read()
+	#print(s)
+	return s
+
+#Clears the terminal - use before printing new values
+def clearTerminal():
+	if sys.platform.lower().startswith('win'):
+		os.system('cls') #Clear terminal (Win)
+	elif sys.platform.lower().startswith('linux'):
+		os.system('clear') #Clear terminal (Unix)
 ''''
 #Functions below this line are kept mostly for legacy reasons. Use with care.
 #=============================================================================
