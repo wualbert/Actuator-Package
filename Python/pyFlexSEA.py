@@ -132,7 +132,7 @@ class PyFlexSEA:
 	#minOffs & maxOffs control what offsets are read (0: IMU, joint enc., etc.,
 	# 1: motor ang/vel/acc, board state, etc., 2: genVar (used for 6-ch Strain), ...)
 	#printDiv: values will be displayed on the terminal every printDiv samples
-	def readActPack(self,minOffs, maxOffs, printDiv, displayFlexSEA=True):
+	def syncActPack(self, minOffs, maxOffs, printDiv, displayFlexSEA=True):
 		self.requestReadActPack(self.offs(minOffs, maxOffs))
 		bytes = self.serialBytesReady(100, COMM_STR_LEN)
 
@@ -304,40 +304,40 @@ class PyFlexSEA:
 		print('6-ch strain #0:  ', self.myRigid.mn.genVar[0])
 		print('...              ')
 
-	# #Print Pocket data:
-	def printPocket_s(self):
-		print('Pocket')
-		print('Gyro X:          ', self.myPocket.mn.gyro.x)
-		print('Gyro Y:          ', self.myPocket.mn.gyro.y)
-		print('Gyro Z:          ', self.myPocket.mn.gyro.z)
-		print('Accel X:         ', self.myPocket.mn.accel.x)
-		print('Accel Y:         ', self.myPocket.mn.accel.y)
-		print('Accel Z:         ', self.myPocket.mn.accel.z)
-		print('Analog[0]:       ', self.myPocket.mn.analog[0])
-		print('Analog[1]:       ', self.myPocket.mn.analog[1])
-
-		print('M1 Angle:        ', self.myPocket.ex[0].enc_ang[0])
-		print('M1 Velocity:     ', self.myPocket.ex[0].enc_ang_vel[0])
-		print('M1 Current:      ', self.myPocket.ex[0].mot_current)
-		print('M1 Voltage:      ', self.myPocket.ex[0].mot_volt)
-		print('M1 Strain:       ', self.myPocket.ex[0].strain)
-
-		print('M2 Angle:        ', self.myPocket.ex[1].enc_ang[0])
-		print('M2 Velocity:     ', self.myPocket.ex[1].enc_ang_vel[0])
-		print('M2 Current:      ', self.myPocket.ex[1].mot_current)
-		print('M2 Voltage:      ', self.myPocket.ex[1].mot_volt)
-		print('M2 Strain:       ', self.myPocket.ex[1].strain)
-
-		print('+VB:             ', self.myPocket.re.vb)
-		print('Battery current: ', self.myPocket.re.current)
-		print('Temperature:     ', self.myPocket.re.temp)
-		print('Status:          ', self.myPocket.re.status)
-
-		print('genVar[0]:       ', self.myPocket.mn.genVar[0])
-		print('genVar[1]:       ', self.myPocket.mn.genVar[1])
-		print('genVar[2]:       ', self.myPocket.mn.genVar[2])
-		print('genVar[3]:       ', self.myPocket.mn.genVar[3])
-		print('...              ')
+	# # #Print Pocket data:
+	# def printPocket_s(self):
+	# 	print('Pocket')
+	# 	print('Gyro X:          ', self.myPocket.mn.gyro.x)
+	# 	print('Gyro Y:          ', self.myPocket.mn.gyro.y)
+	# 	print('Gyro Z:          ', self.myPocket.mn.gyro.z)
+	# 	print('Accel X:         ', self.myPocket.mn.accel.x)
+	# 	print('Accel Y:         ', self.myPocket.mn.accel.y)
+	# 	print('Accel Z:         ', self.myPocket.mn.accel.z)
+	# 	print('Analog[0]:       ', self.myPocket.mn.analog[0])
+	# 	print('Analog[1]:       ', self.myPocket.mn.analog[1])
+    #
+	# 	print('M1 Angle:        ', self.myPocket.ex[0].enc_ang[0])
+	# 	print('M1 Velocity:     ', self.myPocket.ex[0].enc_ang_vel[0])
+	# 	print('M1 Current:      ', self.myPocket.ex[0].mot_current)
+	# 	print('M1 Voltage:      ', self.myPocket.ex[0].mot_volt)
+	# 	print('M1 Strain:       ', self.myPocket.ex[0].strain)
+    #
+	# 	print('M2 Angle:        ', self.myPocket.ex[1].enc_ang[0])
+	# 	print('M2 Velocity:     ', self.myPocket.ex[1].enc_ang_vel[0])
+	# 	print('M2 Current:      ', self.myPocket.ex[1].mot_current)
+	# 	print('M2 Voltage:      ', self.myPocket.ex[1].mot_volt)
+	# 	print('M2 Strain:       ', self.myPocket.ex[1].strain)
+    #
+	# 	print('+VB:             ', self.myPocket.re.vb)
+	# 	print('Battery current: ', self.myPocket.re.current)
+	# 	print('Temperature:     ', self.myPocket.re.temp)
+	# 	print('Status:          ', self.myPocket.re.status)
+    #
+	# 	print('genVar[0]:       ', self.myPocket.mn.genVar[0])
+	# 	print('genVar[1]:       ', self.myPocket.mn.genVar[1])
+	# 	print('genVar[2]:       ', self.myPocket.mn.genVar[2])
+	# 	print('genVar[3]:       ', self.myPocket.mn.genVar[3])
+	# 	print('...              ')
 
 	#Print ActPack data (Rigid + controller info):
 	def printActPack(self,div):

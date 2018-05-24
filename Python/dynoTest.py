@@ -4,6 +4,8 @@
 # 2018 Albert Wu
 import numpy as np
 import time
+from time import sleep
+
 from dyno_parameters import *
 
 class DynoTest:
@@ -27,13 +29,16 @@ class DynoTest:
         Called at every timestep. Runs the test
         :return:
         '''
-        if time.time()-self.lastChangeTime < CHANGE_LOAD_WAIT:
-            #do nothing
+        if self.done:
+            self.finish()
+            return
+        if time.time()-max(self.lastChangeLoadTime,self.lastChangeTestTime) < CHANGE_LOAD_WAIT:
+            #Set voltage
+            self.loadFlexSEA.setMotorVoltage(self.currentLoadV)
+            self.testFlexSEA.setMotorVoltage(self.currentTestV)
             return
         else:
             #Read data
-            self.testFlexSEA.readActPack(0, 2, DISP_DIV,False)
-            self.testFlexSEA.readActPack(0, 2, DISP_DIV,False)
             self.lastChangeTime = time.time()
 
             #TODO: Dynamic wait time selection
@@ -48,6 +53,10 @@ class DynoTest:
                 # Change load voltage
                 self.changeLoadV()
 
+            #Set voltage
+            self.loadFlexSEA.setMotorVoltage(self.currentLoadV)
+            self.testFlexSEA.setMotorVoltage(self.currentTestV)
+
             #Store data
             self.writeData()
 
@@ -59,11 +68,15 @@ class DynoTest:
         :return:
         '''
         self.currentLoadV+=V_LOAD_STEP_SIZE
+        if self.currentLoadV>V_LOAD_MAX:
+            print('Reached Maximum Load V')
+            self.changeTestV()
+            return
         if self.currentLoadV>self.currentTestV:
-            #Reached maximum voltage
             print('Warning: Load Voltage > Test Voltage!')
         #send voltage command
-        self.loadFlexSEA.setMotorVoltage(self.currentLoadV)
+        # self.loadFlexSEA.setMotorVoltage(self.currentLoadV)
+        print('Load V changed to ' + str(self.currentLoadV))
         self.lastChangeLoadTime = time.time()
         return
 
@@ -79,10 +92,13 @@ class DynoTest:
         if self.currentTestV>V_MAX:
             #Test has ended
             print('Reached Maximum Test Voltage')
-            #TODO: wrap up test
+            print('Wrapping up test...')
+            self.done = True
         else:
-            self.loadFlexSEA.setMotorVoltage(self.currentLoadV)
-            self.testFlexSEA.setMotorVoltage(self.currentTestV)
+            # self.loadFlexSEA.setMotorVoltage(self.currentLoadV)
+            # self.testFlexSEA.setMotorVoltage(self.currentTestV)
+            print('Test V changed to '+str(self.currentTestV))
+            print('Load V changed to ' +str(self.currentLoadV))
         self.lastChangeLoadTime = time.time()
         self.lastChangeTestTime = time.time()
         return
@@ -93,4 +109,10 @@ class DynoTest:
 
     def finish(self):
         #TODO: close csv, exit the program gracefully
-        return
+        self.loadFlexSEA.setMotorVoltage(0)
+        self.testFlexSEA.setMotorVoltage(0)
+        ## Auto termination not working
+        # if abs(self.loadFlexSEA.myRigid.ex.enc_ang_vel[0])<2 and \
+        #     abs(self.testFlexSEA.myRigid.ex.enc_ang_vel[0]) < 2:
+        #     print('Motor Stopped. Terminating...')
+        #     raise SystemExit

@@ -17,7 +17,7 @@ myPyFlexSEA = PyFlexSEA()
 
 # User setup:
 # COM = comPortFromFile().rstrip()
-COM = 'COM5'
+COM = 'COM6'
 refreshRate = 0.004   # seconds, communication & FSM
 displayDiv = 15       # we refresh the display every 50th packet
 flexSEAScheduler = sched.scheduler(perf_counter, sleep) # global scheduler
@@ -32,7 +32,7 @@ def timerEventReadActPack():
 	global f
 	lastTimeStamp = timeStamp
 	timeStamp = perf_counter()
-	i = myPyFlexSEA.readActPack(0, 2, displayDiv)
+	i = myPyFlexSEA.syncActPack(0, 2, displayDiv)
 	f = f*0.99 + 0.01/(timeStamp-lastTimeStamp) # leaky integral refresh rate
 	if i == 0:
 		print('\nRefresh rate =', f)

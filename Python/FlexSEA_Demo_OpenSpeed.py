@@ -13,15 +13,19 @@ import sys
 import sched # python task scheduler library
 
 # User setup:
-COM = comPortFromFile()
+# COM = comPortFromFile()
+COM = 'COM6'
 refreshRate = 0.01   # seconds, communication & FSM
 displayDiv = 5       # we refresh the display every 5th packet
 flexSEAScheduler = sched.scheduler(perf_counter, sleep) # global scheduler
 
+#global instance of PyFlexSEA
+myPyFlexSEA = PyFlexSEA()
+
 # This is called by the timer:
 def timerEvent():
 	# Read data & display it:
-	i = readActPack(0, 2, displayDiv)
+	i = myPyFlexSEA.syncActPack(0, 2, displayDiv)
 	if i == 0:
 		print('\nFSM State =', state)
 	# Call state machine:
@@ -44,8 +48,8 @@ def stateMachineDemo1():
 		
 		# Set Control mode to Open
 		print('Setting controller to Open...')
-		setControlMode(CTRL_OPEN)
-		setMotorVoltage(0)
+		myPyFlexSEA.setControlMode(CTRL_OPEN)
+		myPyFlexSEA.setMotorVoltage(0)
 		
 		# Transition:
 		fsmLoopCounter = 0
@@ -54,7 +58,7 @@ def stateMachineDemo1():
 	elif state == 'hold':
 		
 		# Setpoint = 0mV
-		setMotorVoltage(0)
+		myPyFlexSEA.setMotorVoltage(0)
 		
 		#Transition:
 		fsmLoopCounter += 1
@@ -65,7 +69,7 @@ def stateMachineDemo1():
 	elif state == 'rampUp':
 		
 		# Setpoint ramps up from 0 to stateTime
-		setMotorVoltage(deadBand + gain*fsmLoopCounter)
+		myPyFlexSEA.setMotorVoltage(deadBand + gain*fsmLoopCounter)
 		
 		#Transition:
 		fsmLoopCounter += 1
@@ -76,7 +80,7 @@ def stateMachineDemo1():
 	elif state == 'plateau':
 		
 		# Plateau at constant speed
-		setMotorVoltage(deadBand + gain*stateTime)
+		myPyFlexSEA.setMotorVoltage(deadBand + gain*stateTime)
 		
 		#Transition:
 		fsmLoopCounter += 1
@@ -87,7 +91,7 @@ def stateMachineDemo1():
 	elif state == 'rampDown':
 		
 		# Setpoint ramps up from 0 to stateTime
-		setMotorVoltage(gain*stateTime + deadBand - gain*fsmLoopCounter)
+		myPyFlexSEA.setMotorVoltage(gain*stateTime + deadBand - gain*fsmLoopCounter)
 		
 		# Transition:
 		fsmLoopCounter += 1
@@ -104,7 +108,14 @@ def stateMachineDemo1():
 # Housekeeping before we quit:
 def beforeExiting():
 	print("closing com")
-	setControlMode(0)
+	i = 0
+	while(i<100):
+		myPyFlexSEA.setMotorVoltage(1)
+		i+=1
+		sleep(0.1)
+		print(i)
+	sleep(0.5)
+	myPyFlexSEA.setControlMode(0)
 	sleep(0.5)
 	hser.close()
 	sleep(0.5)
@@ -120,8 +131,8 @@ print('Opened', hser.portstr)
 
 # pyFlexSEA:
 print('Initializing FlexSEA stack...')
-initPyFlexSEA()
-setPyFlexSEASerialPort(hser) # pass com handle to pyFlexSEA
+myPyFlexSEA.initPyFlexSEA()
+myPyFlexSEA.setPyFlexSEASerialPort(hser) # pass com handle to pyFlexSEA
 sleep(0.1)
 
 # Background: read Rigid and call FSM at 100Hz:

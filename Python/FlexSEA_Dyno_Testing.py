@@ -9,14 +9,14 @@ from time import perf_counter, sleep
 import time
 from pyFlexSEA import *
 from dyno_parameters import *
+from dynoTest import *
 import os
 import sys
 import sched # python task scheduler library
 
 # User setup:
 #Get COM Ports
-loadCOM, testCOM, forceCOM = comPortFromFile().split(",")
-
+loadCOM, testCOM, junk = comPortFromFile().split(",")
 flexSEAScheduler = sched.scheduler(perf_counter, sleep) # global scheduler
 
 # This is called by the timer:
@@ -63,12 +63,20 @@ def timerEvent():
 	global f
 	lastTimeStamp = timeStamp
 	timeStamp = perf_counter()
-	i = testFlexSEA.readActPack(0, 2, DISP_DIV)
-	loadFlexSEA.readActPack(0, 2, DISP_DIV, False)
-	f = f*0.99 + 0.01/(timeStamp-lastTimeStamp) # leaky integral refresh rate
-	if i == 0:
-		print('\nRefresh rate =', f)
-		print("--> press 'control+c' to quit")
+	testFlexSEA.syncActPack(0, 2, DISP_DIV, False)
+	loadFlexSEA.syncActPack(0, 2, DISP_DIV, False)
+	print(loadFlexSEA.printRigid())
+	try:
+		myDynoTest.run()
+	except Exception as e:
+		print('Exception in dynoTest():')
+		print(e)
+
+
+	# f = f*0.99 + 0.01/(timeStamp-lastTimeStamp) # leaky integral refresh rate
+	# if i == 0:
+	# 	print('\nRefresh rate =', f)
+	# 	print("--> press 'control+c' to quit")
 
 	flexSEAScheduler.enter(REFRESH_RATE, 1, timerEvent) # adds itself back onto schedule, with priority 1
 
@@ -88,12 +96,7 @@ was_motor_angel_equal_to_tau = False
 tau = 6283185 #6.283185
 
 ############################ DYNO TESTING CODE ################################
-def dynoTest(): # function called once every cycle
-	try:
-		pass
-	except:
-		pass
-	# end main function
+
 
 ########################### END OF DYNO TESTING CODE ###########################
 ################################################################################
@@ -102,7 +105,12 @@ def dynoTest(): # function called once every cycle
 def beforeExiting():
 	print('closing com')
 	try:
+		loadFlexSEA.setMotorVoltage(int(0))
+		sleep(0.5)
+		testFlexSEA.setMotorVoltage(int(0))
+		sleep(0.5)
 		loadFlexSEA.setControlMode(0)
+		sleep(0.5)
 		testFlexSEA.setControlMode(0)
 		sleep(0.5)
 		loadhser.close()
@@ -137,6 +145,8 @@ try:
 	testFlexSEA = PyFlexSEA()
 	testFlexSEA.initPyFlexSEA()
 	testFlexSEA.setPyFlexSEASerialPort(testhser) #Pass com handle to pyFlexSEA
+	#initialize test
+	myDynoTest = DynoTest(testFlexSEA,loadFlexSEA)
 except serial.SerialException:
 	print('Test FlexSEA Initialization Failed!')
 
@@ -148,9 +158,15 @@ except serial.SerialException:
 print('Starting the background comm...')
 sleep(0.1)
 
+# set control mode to voltage open loop
+testFlexSEA.setControlMode(CTRL_OPEN)
+sleep(0.5)
+loadFlexSEA.setControlMode(CTRL_OPEN)
+sleep(0.5)
 # Main while() loop:
 #===================
 try:
+	print('Test V set to 0')
 	while True:
 		flexSEAScheduler.enter(REFRESH_RATE, 1, timerEvent)
 		flexSEAScheduler.run()
@@ -158,3 +174,5 @@ try:
 except (KeyboardInterrupt, SystemExit):
 	beforeExiting()
 	sys.exit()
+except Exception:
+	print('Exception in main while loop!')
